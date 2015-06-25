@@ -2,6 +2,7 @@
 // License: GNU General Public License v3. See license.txt
 
 {% include 'selling/sales_common.js' %}
+{% include 'das/das_commons.js' %};
 
 erpnext.selling.SalesOrderController = erpnext.selling.SellingController.extend({
 	refresh: function(doc, dt, dn) {
@@ -43,6 +44,8 @@ erpnext.selling.SalesOrderController = erpnext.selling.SellingController.extend(
 							cur_frm.add_custom_button(__('Make Maint. Schedule'),
 								this.make_maintenance_schedule, null, "btn-default");
 						}
+				// Purchase invoice
+				cur_frm.add_custom_button(__('Make Purchase Invoice'), this.make_purchase_invoice, "icon-truck");
 
 			} else {
 				// un-stop
