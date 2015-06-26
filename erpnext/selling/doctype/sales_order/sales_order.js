@@ -45,7 +45,7 @@ erpnext.selling.SalesOrderController = erpnext.selling.SellingController.extend(
 								this.make_maintenance_schedule, null, "btn-default");
 						}
 				// Purchase invoice
-				cur_frm.add_custom_button(__('Make Purchase Invoice'), this.make_purchase_invoice, "icon-truck");
+				cur_frm.add_custom_button(__('Make Technician Purchase Invoice'), this.make_purchase_invoice, "icon-truck");
 
 			} else {
 				// un-stop
