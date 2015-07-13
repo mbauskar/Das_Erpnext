@@ -724,11 +724,13 @@ class StockEntry(StockController):
 						frappe.MappingMismatchError)
 						
 	def validate_batch(self):
-		if self.purpose == "Material Transfer for Manufacture":
+		if self.purpose in ["Material Transfer for Manufacture", "Manufacture", "Repack", "Subcontract"]:
 			for item in self.get("items"):
 				if item.batch_no:
-					if getdate(self.posting_date) > getdate(frappe.db.get_value("Batch", item.batch_no, "expiry_date")):
-						frappe.throw(_("Batch {0} of Item {1} has expired.").format(item.batch_no, item.item_code))
+					expiry_date = frappe.db.get_value("Batch", item.batch_no, "expiry_date")
+					if expiry_date:
+						if getdate(self.posting_date) > getdate(expiry_date):
+							frappe.throw(_("Batch {0} of Item {1} has expired.").format(item.batch_no, item.item_code))
 
 @frappe.whitelist()
 def get_party_details(ref_dt, ref_dn):
@@ -867,8 +869,6 @@ def make_return_jv(stock_entry):
 			"account": r.get("account"),
 			"party_type": r.get("party_type"),
 			"party": r.get("party"),
-			"against_invoice": r.get("against_invoice"),
-			"against_voucher": r.get("against_voucher"),
 			"balance": get_balance_on(r.get("account"), se.posting_date) if r.get("account") else 0
 		})
 
@@ -879,8 +879,7 @@ def make_return_jv_from_sales_invoice(se, ref):
 	parent = {
 		"account": ref.doc.debit_to,
 		"party_type": "Customer",
-		"party": ref.doc.customer,
-		"against_invoice": ref.doc.name,
+		"party": ref.doc.customer
 	}
 
 	# income account entries
@@ -954,9 +953,6 @@ def make_return_jv_from_delivery_note(se, ref):
 
 			break
 
-	if len(invoices_against_delivery) == 1:
-		parent["against_invoice"] = invoices_against_delivery[0]
-
 	result = [parent] + [{"account": account} for account in children]
 
 	return result
@@ -1011,9 +1007,6 @@ def make_return_jv_from_purchase_receipt(se, ref):
 				}
 
 			break
-
-	if len(invoice_against_receipt) == 1:
-		parent["against_voucher"] = invoice_against_receipt[0]
 
 	result = [parent] + [{"account": account} for account in children]
 

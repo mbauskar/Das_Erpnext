@@ -68,7 +68,7 @@ erpnext.accounts.PurchaseInvoice = erpnext.buying.BuyingController.extend({
 
 		}
 	},
-
+	
 	supplier: function() {
 		var me = this;
 		if(this.frm.updating_party_details)
@@ -224,3 +224,4 @@ cur_frm.cscript.select_print_heading = function(doc,cdt,cdn){
 	else
 		cur_frm.pformat.print_heading = __("Purchase Invoice");
 }
+

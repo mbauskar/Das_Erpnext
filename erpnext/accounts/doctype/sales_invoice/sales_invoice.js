@@ -395,8 +395,6 @@ cur_frm.cscript.on_submit = function(doc, cdt, cdn) {
 	}
 }
 
-
-
 cur_frm.set_query("debit_to", function(doc) {
 	return{
 		filters: [

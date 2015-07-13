@@ -138,7 +138,7 @@ class SalesInvoice(SellingController):
 
 		if not self.debit_to:
 			self.debit_to = get_party_account(self.company, self.customer, "Customer")
-		if not self.due_date:
+		if not self.due_date and self.customer:
 			self.due_date = get_due_date(self.posting_date, "Customer", self.customer, self.company)
 
 		super(SalesInvoice, self).set_missing_values(for_validate)
@@ -169,6 +169,7 @@ class SalesInvoice(SellingController):
 		if pos:
 			if not for_validate and not self.customer:
 				self.customer = pos.customer
+				self.mode_of_payment = pos.mode_of_payment
 				# self.set_customer_defaults()
 
 			for fieldname in ('territory', 'naming_series', 'currency', 'taxes_and_charges', 'letter_head', 'tc_name',
@@ -265,20 +266,11 @@ class SalesInvoice(SellingController):
 			},
 		})
 
-		if cint(frappe.defaults.get_global_default('maintain_same_sales_rate')):
-			super(SalesInvoice, self).validate_with_previous_doc({
-				"Sales Order Item": {
-					"ref_dn_field": "so_detail",
-					"compare_fields": [["rate", "="]],
-					"is_child_table": True,
-					"allow_duplicate_prev_row_id": True
-				},
-				"Delivery Note Item": {
-					"ref_dn_field": "dn_detail",
-					"compare_fields": [["rate", "="]],
-					"is_child_table": True
-				}
-			})
+		if cint(frappe.db.get_single_value('Selling Settings', 'maintain_same_sales_rate')):
+			self.validate_rate_with_reference_doc([
+				["Sales Order", "sales_order", "so_detail"], 
+				["Delivery Note", "delivery_note", "dn_detail"]
+			])
 
 	def set_against_income_account(self):
 		"""Set against account for debit to account"""
@@ -505,7 +497,7 @@ class SalesInvoice(SellingController):
 				gl_entries.append(
 					self.get_gl_dict({
 						"account": tax.account_head,
-						"against": self.debit_to,
+						"against": self.customer,
 						"credit": flt(tax.base_tax_amount_after_discount_amount),
 						"remarks": self.remarks,
 						"cost_center": tax.cost_center
@@ -519,7 +511,7 @@ class SalesInvoice(SellingController):
 				gl_entries.append(
 					self.get_gl_dict({
 						"account": item.income_account,
-						"against": self.debit_to,
+						"against": self.customer,
 						"credit": item.base_net_amount,
 						"remarks": self.remarks,
 						"cost_center": item.cost_center
@@ -550,7 +542,7 @@ class SalesInvoice(SellingController):
 			gl_entries.append(
 				self.get_gl_dict({
 					"account": self.cash_bank_account,
-					"against": self.debit_to,
+					"against": self.customer,
 					"debit": self.paid_amount,
 					"remarks": self.remarks,
 				})
@@ -574,7 +566,7 @@ class SalesInvoice(SellingController):
 			gl_entries.append(
 				self.get_gl_dict({
 					"account": self.write_off_account,
-					"against": self.debit_to,
+					"against": self.customer,
 					"debit": self.write_off_amount,
 					"remarks": self.remarks,
 					"cost_center": self.write_off_cost_center
@@ -589,7 +581,7 @@ def get_list_context(context=None):
 
 @frappe.whitelist()
 def get_bank_cash_account(mode_of_payment, company):
-	account = frappe.db.get_value("Mode of Payment Account", 
+	account = frappe.db.get_value("Mode of Payment Account",
 		{"parent": mode_of_payment, "company": company}, "default_account")
 	if not account:
 		frappe.msgprint(_("Please set default Cash or Bank account in Mode of Payment {0}").format(mode_of_payment))
@@ -613,7 +605,7 @@ def get_income_account(doctype, txt, searchfield, start, page_len, filters):
 				and tabAccount.company = '%(company)s'
 				and tabAccount.%(key)s LIKE '%(txt)s'
 				%(mcond)s""" % {'company': filters['company'], 'key': searchfield,
-			'txt': "%%%s%%" % txt, 'mcond':get_match_cond(doctype)})
+			'txt': "%%%s%%" % frappe.db.escape(txt), 'mcond':get_match_cond(doctype)})
 
 @frappe.whitelist()
 def make_delivery_note(source_name, target_doc=None):
